@@ -1,10 +1,12 @@
 from fastapi import FastAPI
-from routes.laptop_routes import router
+from routes.routes import router
 
 app = FastAPI()
 
+# Include the router
 app.include_router(router)
 
+# Main endpoint
 @app.get("/")
-def root():
-    return {"message": "Welcome to the Laptop Price API"}
+def read_root():
+    return {"message": "Welcome to the Laptop API!"}

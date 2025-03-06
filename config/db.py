@@ -1,7 +1,10 @@
 from pymongo import MongoClient
 import os
 
-MONGO_URL = os.getenv("MONGO_URL")
-client = MongoClient(MONGO_URL)
-db = client.laptop_db
-collection = db.laptops
+# MongoDB URI
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+
+# Create MongoClient and connect to the database
+client = MongoClient(MONGO_URI)
+db = client['LaptopPriceData']  # Database Name
+laptop_collection = db['LaptopInfo']  # Collection Name
