@@ -8,16 +8,36 @@ from models.model import Laptop
 from models.prediction import PredictionResponse
 
 # Load models (use try-except to ensure loading is safe)
-def load_models():
-    try:
-        rf_model = joblib.load('random_forest_model.pkl')
-        encoder = joblib.load('onehot_encoder.pkl')
-        scaler = joblib.load('scaler.pkl')
-        return rf_model, encoder, scaler
-    except FileNotFoundError:
-        raise Exception("Models not found! Please save models first.")
+import os
+import joblib
 
-rf_model, encoder, scaler = load_models()
+def load_models(models_dir="saved_models"):
+    """
+    Load machine learning models from the specified directory
+    
+    Args:
+        models_dir (str): Path to the directory containing saved models
+        
+    Returns:
+        tuple: (rf_model, encoder, scaler)
+    """
+    try:
+        # Create full paths to model files
+        rf_model_path = os.path.join(models_dir, 'random_forest_model.pkl')
+        encoder_path = os.path.join(models_dir, 'onehot_encoder.pkl')
+        scaler_path = os.path.join(models_dir, 'scaler.pkl')
+        
+        # Load models from the specified directory
+        rf_model = joblib.load(rf_model_path)
+        encoder = joblib.load(encoder_path)
+        scaler = joblib.load(scaler_path)
+        
+        return rf_model, encoder, scaler
+    except FileNotFoundError as e:
+        raise Exception(f"Models not found in directory '{models_dir}'! Please save models first. Error: {str(e)}")
+
+# You can specify a different directory when calling the function
+rf_model, encoder, scaler = load_models("/Users/samenergy/Documents/Projects/Databases_P13/saved_models")
 
 # Prediction function
 def predict_price(input_data: Laptop) -> PredictionResponse:

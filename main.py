@@ -5,7 +5,7 @@ from routes.routes import router as laptop_router
 app = FastAPI()
 
 # Include the laptop-related routes
-app.include_router(laptop_router, prefix="/laptop", tags=["laptop"])
+app.include_router(laptop_router, prefix="/api", tags=["laptop"])
 
 @app.get("/")
 def read_root():
