@@ -2,11 +2,16 @@ from fastapi import APIRouter
 from controllers.controller import create_laptop, get_laptops, get_laptop_by_id, update_laptop, delete_laptop
 from models.model import Laptop
 from typing import List
-from controllers.predict_controller import predict_price
 from fastapi.responses import JSONResponse
-
+from controllers.laptop_controller import predict_price
+from models.prediction import PredictionResponse
 
 router = APIRouter()
+
+@router.post("/predict_price", response_model=PredictionResponse)
+def predict_laptop_price(laptop: Laptop):
+    return predict_price(laptop)
+
 
 # Endpoint to create a new laptop
 @router.post("/laptops/", response_model=Laptop)
@@ -35,10 +40,3 @@ async def update_existing_laptop(laptop_id: str, laptop: Laptop):
 async def delete_existing_laptop(laptop_id: str):
     return await delete_laptop(laptop_id)
 
-@router.post("/predict")
-def predict_laptop_price(laptop: Laptop):
-    try:
-        predicted_price = predict_price(laptop.dict())
-        return JSONResponse(content={"Predicted_Price": round(predicted_price, 2)})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
