@@ -12,7 +12,7 @@ class Laptop(BaseModel):
     Battery_Life_Hours: float
     Weight_Kg: float
     Operating_System: str
-    Price_Dollars: float
+    Price_Dollars: Optional[float] = None  # Make Price_Dollars optional
 
 class LaptopInResponse(Laptop):
     _id: str  # MongoDB ObjectId as string

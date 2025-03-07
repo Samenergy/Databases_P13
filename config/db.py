@@ -8,3 +8,6 @@ MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 client = MongoClient(MONGO_URI)
 db = client['LaptopPriceData']  # Database Name
 laptop_collection = db['LaptopInfo']  # Collection Name
+
+def get_collection():
+    return laptop_collection
