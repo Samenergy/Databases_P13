@@ -6,8 +6,6 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from models.model import Laptop
 from models.prediction import PredictionResponse
-
-# Load models (use try-except to ensure loading is safe)
 import os
 import joblib
 
@@ -37,7 +35,7 @@ def load_models(models_dir="saved_models"):
         raise Exception(f"Models not found in directory '{models_dir}'! Please save models first. Error: {str(e)}")
 
 # You can specify a different directory when calling the function
-rf_model, encoder, scaler = load_models("/Users/samenergy/Documents/Projects/Databases_P13/saved_models")
+rf_model, encoder, scaler = load_models("/Users/samenergy/Documents/Projects/Databases_P13/MongoDB/saved_models")
 
 # Prediction function
 def predict_price(input_data: Laptop) -> PredictionResponse:
