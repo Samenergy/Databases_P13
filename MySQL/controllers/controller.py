@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 
-# Pydantic models for input data
-class CreatePersonLoanCreditHistory(BaseModel):
+# Pydantic models for input format
+class InputData(BaseModel):
     person_age: float
     person_gender: str
     person_education: str
@@ -17,98 +17,123 @@ class CreatePersonLoanCreditHistory(BaseModel):
     person_home_ownership: str
     loan_amnt: float
     loan_intent: str
-    loan_status: int
     loan_int_rate: float
     loan_percent_income: float
     cb_person_cred_hist_length: float
     credit_score: int
     previous_loan_defaults_on_file: str
+    loan_status: int
 
 
-class PersonOut(BaseModel):
-    id: int
+# Pydantic models for data validation
+class PersonBase(BaseModel):
     age: float
     gender: str
     education: str
     income: float
     emp_exp: int
     home_ownership: str
-    loans: Optional[List[Loan]] = []
-    credit_history: Optional[List[CreditHistory]] = []
-
-    class Config:
-        orm_mode = True
 
 
-class LoanOut(BaseModel):
-    id: int
+class LoanBase(BaseModel):
     loan_amount: float
     loan_intent: str
     loan_status: int
+
+
+class LoanFinancialsBase(BaseModel):
     interest_rate: float
     percent_income: float
 
-    class Config:
-        orm_mode = True
 
-
-class CreditHistoryOut(BaseModel):
-    id: int
+class CreditHistoryBase(BaseModel):
     credit_score: int
-    cred_hist_length: float
+    cred_hist_length: int
     previous_defaults: str
 
+
+class PersonOut(PersonBase):
+    id: int
+    loans: Optional[List[LoanBase]] = []
+    credit_history: Optional[List[CreditHistoryBase]] = []
+
     class Config:
         orm_mode = True
 
 
-def create_person_with_loan_and_credit_history(db: Session, data: CreatePersonLoanCreditHistory):
-    # Create Person record
+class LoanOut(LoanBase):
+    id: int
+    loan_financials: Optional[List[LoanFinancialsBase]] = []
+    person_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class LoanFinancialsOut(LoanFinancialsBase):
+    id: int
+    loan_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class CreditHistoryOut(CreditHistoryBase):
+    id: int
+    person_id: int
+
+    class Config:
+        orm_mode = True
+
+
+# CRUD functions for merging the models
+def create_person_and_related_data(db: Session, input_data: InputData):
+    # Step 1: Create the Person record
     db_person = Person(
-        age=data.person_age,
-        gender=data.person_gender,
-        education=data.person_education,
-        income=data.person_income,
-        emp_exp=data.person_emp_exp,
-        home_ownership=data.person_home_ownership
+        age=input_data.person_age,
+        gender=input_data.person_gender,
+        education=input_data.person_education,
+        income=input_data.person_income,
+        emp_exp=input_data.person_emp_exp,
+        home_ownership=input_data.person_home_ownership
     )
     db.add(db_person)
     db.commit()
     db.refresh(db_person)
 
-    # Create Loan record
+    # Step 2: Create the Loan record
     db_loan = Loan(
         person_id=db_person.id,
-        loan_amount=data.loan_amnt,
-        loan_intent=data.loan_intent,
-        loan_status=data.loan_status
+        loan_amount=input_data.loan_amnt,
+        loan_intent=input_data.loan_intent,
+        loan_status=input_data.loan_status
     )
     db.add(db_loan)
     db.commit()
     db.refresh(db_loan)
 
-    # Create LoanFinancials record
+    # Step 3: Create the LoanFinancials record
     db_loan_financials = LoanFinancials(
         loan_id=db_loan.id,
-        interest_rate=data.loan_int_rate,
-        percent_income=data.loan_percent_income
+        interest_rate=input_data.loan_int_rate,
+        percent_income=input_data.loan_percent_income
     )
     db.add(db_loan_financials)
     db.commit()
     db.refresh(db_loan_financials)
 
-    # Create CreditHistory record
+    # Step 4: Create the CreditHistory record
     db_credit_history = CreditHistory(
         person_id=db_person.id,
-        credit_score=data.credit_score,
-        cred_hist_length=data.cb_person_cred_hist_length,
-        previous_defaults=data.previous_loan_defaults_on_file
+        credit_score=input_data.credit_score,
+        cred_hist_length=input_data.cb_person_cred_hist_length,
+        previous_defaults=input_data.previous_loan_defaults_on_file
     )
     db.add(db_credit_history)
     db.commit()
     db.refresh(db_credit_history)
 
-    return db_person
+    return db_person, db_loan, db_loan_financials, db_credit_history
 
 
 def get_all_persons(db: Session):
@@ -119,15 +144,15 @@ def get_person_by_id(db: Session, person_id: int):
     return db.query(Person).filter(Person.id == person_id).first()
 
 
-def update_person(db: Session, person_id: int, person: CreatePersonLoanCreditHistory):
+def update_person(db: Session, person_id: int, person: PersonBase):
     db_person = db.query(Person).filter(Person.id == person_id).first()
     if db_person:
-        db_person.age = person.person_age
-        db_person.gender = person.person_gender
-        db_person.education = person.person_education
-        db_person.income = person.person_income
-        db_person.emp_exp = person.person_emp_exp
-        db_person.home_ownership = person.person_home_ownership
+        db_person.age = person.age
+        db_person.gender = person.gender
+        db_person.education = person.education
+        db_person.income = person.income
+        db_person.emp_exp = person.emp_exp
+        db_person.home_ownership = person.home_ownership
         db.commit()
         db.refresh(db_person)
     return db_person
