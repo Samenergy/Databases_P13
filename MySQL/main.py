@@ -1,12 +1,7 @@
-from routes.routes import router
 from fastapi import FastAPI
-from config.database import engine, Base
+from routes.routes import router
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+app = FastAPI()
 
-# Initialize FastAPI app
-app = FastAPI(title="Loan Management API")
-
-# Include routes
-app.include_router(router, prefix="/api")
+# Include the routes
+app.include_router(router)
