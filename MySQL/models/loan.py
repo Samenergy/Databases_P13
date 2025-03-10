@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey, String
 from sqlalchemy.orm import relationship
 from config.database import Base
-
 class Loan(Base):
     __tablename__ = "loans"
 
@@ -12,3 +11,4 @@ class Loan(Base):
     loan_status = Column(Integer, nullable=False)  # 1 = Approved, 0 = Rejected
 
     person = relationship("Person", back_populates="loans")
+    loan_financials = relationship("LoanFinancials", back_populates="loan") 

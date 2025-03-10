@@ -3,164 +3,124 @@ from models.person import Person
 from models.loan import Loan
 from models.loan_financials import LoanFinancials
 from models.credit_history import CreditHistory
-from pydantic import BaseModel
-from typing import List, Optional
+from models.schemas import PersonCreate, LoanCreate, LoanFinancialsCreate, CreditHistoryCreate, PersonWithLoanResponse
+from fastapi import HTTPException
 
-
-# Pydantic models for input format
-class InputData(BaseModel):
-    person_age: float
-    person_gender: str
-    person_education: str
-    person_income: float
-    person_emp_exp: int
-    person_home_ownership: str
-    loan_amnt: float
-    loan_intent: str
-    loan_int_rate: float
-    loan_percent_income: float
-    cb_person_cred_hist_length: float
-    credit_score: int
-    previous_loan_defaults_on_file: str
-    loan_status: int
-
-
-# Pydantic models for data validation
-class PersonBase(BaseModel):
-    age: float
-    gender: str
-    education: str
-    income: float
-    emp_exp: int
-    home_ownership: str
-
-
-class LoanBase(BaseModel):
-    loan_amount: float
-    loan_intent: str
-    loan_status: int
-
-
-class LoanFinancialsBase(BaseModel):
-    interest_rate: float
-    percent_income: float
-
-
-class CreditHistoryBase(BaseModel):
-    credit_score: int
-    cred_hist_length: int
-    previous_defaults: str
-
-
-class PersonOut(PersonBase):
-    id: int
-    loans: Optional[List[LoanBase]] = []
-    credit_history: Optional[List[CreditHistoryBase]] = []
-
-    class Config:
-        orm_mode = True
-
-
-class LoanOut(LoanBase):
-    id: int
-    loan_financials: Optional[List[LoanFinancialsBase]] = []
-    person_id: int
-
-    class Config:
-        orm_mode = True
-
-
-class LoanFinancialsOut(LoanFinancialsBase):
-    id: int
-    loan_id: int
-
-    class Config:
-        orm_mode = True
-
-
-class CreditHistoryOut(CreditHistoryBase):
-    id: int
-    person_id: int
-
-    class Config:
-        orm_mode = True
-
-
-# CRUD functions for merging the models
-def create_person_and_related_data(db: Session, input_data: InputData):
-    # Step 1: Create the Person record
-    db_person = Person(
-        age=input_data.person_age,
-        gender=input_data.person_gender,
-        education=input_data.person_education,
-        income=input_data.person_income,
-        emp_exp=input_data.person_emp_exp,
-        home_ownership=input_data.person_home_ownership
+# Create a person with associated loan, loan financials, and credit history
+def create_person_with_loan_and_credit(
+    db: Session, person_data: PersonCreate, loan_data: LoanCreate, loan_financial_data: LoanFinancialsCreate, credit_history_data: CreditHistoryCreate
+):
+    # Create the person
+    person = Person(
+        age=person_data.age,
+        gender=person_data.gender,
+        education=person_data.education,
+        income=person_data.income,
+        emp_exp=person_data.emp_exp,
+        home_ownership=person_data.home_ownership
     )
-    db.add(db_person)
+    db.add(person)
     db.commit()
-    db.refresh(db_person)
+    db.refresh(person)
 
-    # Step 2: Create the Loan record
-    db_loan = Loan(
-        person_id=db_person.id,
-        loan_amount=input_data.loan_amnt,
-        loan_intent=input_data.loan_intent,
-        loan_status=input_data.loan_status
+    # Create the loan
+    loan = Loan(
+        person_id=person.id,
+        loan_amount=loan_data.loan_amount,
+        loan_intent=loan_data.loan_intent,
+        loan_status=loan_data.loan_status
     )
-    db.add(db_loan)
+    db.add(loan)
     db.commit()
-    db.refresh(db_loan)
+    db.refresh(loan)
 
-    # Step 3: Create the LoanFinancials record
-    db_loan_financials = LoanFinancials(
-        loan_id=db_loan.id,
-        interest_rate=input_data.loan_int_rate,
-        percent_income=input_data.loan_percent_income
+    # Create the loan financials
+    loan_financial = LoanFinancials(
+        loan_id=loan.id,
+        interest_rate=loan_financial_data.interest_rate,
+        percent_income=loan_financial_data.percent_income
     )
-    db.add(db_loan_financials)
+    db.add(loan_financial)
     db.commit()
-    db.refresh(db_loan_financials)
+    db.refresh(loan_financial)
 
-    # Step 4: Create the CreditHistory record
-    db_credit_history = CreditHistory(
-        person_id=db_person.id,
-        credit_score=input_data.credit_score,
-        cred_hist_length=input_data.cb_person_cred_hist_length,
-        previous_defaults=input_data.previous_loan_defaults_on_file
+    # Create credit history
+    credit_history = CreditHistory(
+        person_id=person.id,
+        credit_score=credit_history_data.credit_score,
+        cred_hist_length=credit_history_data.cred_hist_length,
+        previous_defaults=credit_history_data.previous_defaults
     )
-    db.add(db_credit_history)
+    db.add(credit_history)
     db.commit()
-    db.refresh(db_credit_history)
+    db.refresh(credit_history)
 
-    return db_person, db_loan, db_loan_financials, db_credit_history
+    return {
+        "person_age": person.age,
+        "person_gender": person.gender,
+        "person_education": person.education,
+        "person_income": person.income,
+        "person_emp_exp": person.emp_exp,
+        "person_home_ownership": person.home_ownership,
+        "loan_amnt": loan.loan_amount,
+        "loan_intent": loan.loan_intent,
+        "loan_int_rate": loan_financial.interest_rate,
+        "loan_percent_income": loan_financial.percent_income,
+        "cb_person_cred_hist_length": credit_history.cred_hist_length,
+        "credit_score": credit_history.credit_score,
+        "previous_loan_defaults_on_file": credit_history.previous_defaults,
+        "loan_status": loan.loan_status
+    }
 
+# Get all persons with associated data
+def get_all_persons_with_data(db: Session):
+    persons = db.query(Person).all()
+    result = []
+    for person in persons:
+        loan = db.query(Loan).filter(Loan.person_id == person.id).first()
+        loan_financial = db.query(LoanFinancials).filter(LoanFinancials.loan_id == loan.id).first()
+        credit_history = db.query(CreditHistory).filter(CreditHistory.person_id == person.id).first()
+        result.append({
+            "person_age": person.age,
+            "person_gender": person.gender,
+            "person_education": person.education,
+            "person_income": person.income,
+            "person_emp_exp": person.emp_exp,
+            "person_home_ownership": person.home_ownership,
+            "loan_amnt": loan.loan_amount,
+            "loan_intent": loan.loan_intent,
+            "loan_int_rate": loan_financial.interest_rate,
+            "loan_percent_income": loan_financial.percent_income,
+            "cb_person_cred_hist_length": credit_history.cred_hist_length,
+            "credit_score": credit_history.credit_score,
+            "previous_loan_defaults_on_file": credit_history.previous_defaults,
+            "loan_status": loan.loan_status
+        })
+    return result
 
-def get_all_persons(db: Session):
-    return db.query(Person).all()
-
-
+# Get a person by ID with associated data
 def get_person_by_id(db: Session, person_id: int):
-    return db.query(Person).filter(Person.id == person_id).first()
-
-
-def update_person(db: Session, person_id: int, person: PersonBase):
-    db_person = db.query(Person).filter(Person.id == person_id).first()
-    if db_person:
-        db_person.age = person.age
-        db_person.gender = person.gender
-        db_person.education = person.education
-        db_person.income = person.income
-        db_person.emp_exp = person.emp_exp
-        db_person.home_ownership = person.home_ownership
-        db.commit()
-        db.refresh(db_person)
-    return db_person
-
-
-def delete_person(db: Session, person_id: int):
-    db_person = db.query(Person).filter(Person.id == person_id).first()
-    if db_person:
-        db.delete(db_person)
-        db.commit()
-    return db_person
+    person = db.query(Person).filter(Person.id == person_id).first()
+    if person is None:
+        raise HTTPException(status_code=404, detail="Person not found")
+    
+    loan = db.query(Loan).filter(Loan.person_id == person.id).first()
+    loan_financial = db.query(LoanFinancials).filter(LoanFinancials.loan_id == loan.id).first()
+    credit_history = db.query(CreditHistory).filter(CreditHistory.person_id == person.id).first()
+    
+    return {
+        "person_age": person.age,
+        "person_gender": person.gender,
+        "person_education": person.education,
+        "person_income": person.income,
+        "person_emp_exp": person.emp_exp,
+        "person_home_ownership": person.home_ownership,
+        "loan_amnt": loan.loan_amount,
+        "loan_intent": loan.loan_intent,
+        "loan_int_rate": loan_financial.interest_rate,
+        "loan_percent_income": loan_financial.percent_income,
+        "cb_person_cred_hist_length": credit_history.cred_hist_length,
+        "credit_score": credit_history.credit_score,
+        "previous_loan_defaults_on_file": credit_history.previous_defaults,
+        "loan_status": loan.loan_status
+    }
