@@ -1,16 +1,15 @@
 from fastapi import FastAPI
-from routes import laptop_routes
-from models.database import init_db
+from config.database import engine, Base
+from routes import person_routes, loan_routes, credit_history_routes, loan_financials_routes
 
-app = FastAPI()
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
-# Initialize database
-init_db()
+# Initialize FastAPI app
+app = FastAPI(title="Loan Management API")
 
 # Include routes
-app.include_router(laptop_routes.router, prefix="/api")
-
-# Root endpoint
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Laptop API"}
+app.include_router(person_routes.router, prefix="/api")
+app.include_router(loan_routes.router, prefix="/api")
+app.include_router(credit_history_routes.router, prefix="/api")
+app.include_router(loan_financials_routes.router, prefix="/api")
