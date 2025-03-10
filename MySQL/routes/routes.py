@@ -7,7 +7,7 @@ from controllers import (
     update_person,
     delete_person
 )
-from models import CreatePersonLoanCreditHistory, PersonOut
+from controllers.controller import CreatePersonLoanCreditHistory, PersonOut
 from config.database import SessionLocal
 
 router = APIRouter()
@@ -26,7 +26,7 @@ def add_person(data: CreatePersonLoanCreditHistory, db: Session = Depends(get_db
     return create_person_with_loan_and_credit_history(db, data)
 
 
-@router.get("/persons/", response_model=List[PersonOut])
+@router.get("/persons/", response_model=list[PersonOut])
 def get_persons(db: Session = Depends(get_db)):
     return get_all_persons(db)
 

@@ -1,5 +1,8 @@
 from sqlalchemy.orm import Session
-from models import Person, Loan, LoanFinancials, CreditHistory
+from models.person import Person
+from models.loan import Loan
+from models.loan_financials import LoanFinancials
+from models.credit_history import CreditHistory
 from pydantic import BaseModel
 from typing import List, Optional
 
