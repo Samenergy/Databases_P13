@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-from routes.routes import router as crud_route
+from routes.routes import router as crud_router
 
 app = FastAPI()
 
-# Include the CRUD routes for all models
-app.include_router(crud_route.router, prefix="/data", tags=["Data Operations"])
+# Include the routes
+app.include_router(crud_router, prefix="/crud", tags=["CRUD Operations"])
 
 @app.get("/")
 async def root():

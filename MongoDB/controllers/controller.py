@@ -10,69 +10,44 @@ loan_collection = database["loans"]
 credit_history_collection = database["credit_history"]
 loan_financials_collection = database["loan_financials"]
 
-# Create Person, Loan, Credit History, Loan Financials
-async def create_person_and_associated_data(person_data: Person, loan_data: Loan, credit_history_data: CreditHistory, loan_financials_data: LoanFinancials):
-    # Insert person
-    person_result = await person_collection.insert_one(person_data.dict())
+async def create_all_models(data: dict):
+    # Create Person
+    person_data = {
+        "person_age": data["person_age"],
+        "person_gender": data["person_gender"],
+        "person_education": data["person_education"],
+        "person_income": data["person_income"],
+        "person_emp_exp": data["person_emp_exp"],
+        "person_home_ownership": data["person_home_ownership"]
+    }
+    person_result = await person_collection.insert_one(person_data)
     person_id = str(person_result.inserted_id)
 
-    # Insert loan with person_id
-    loan_data.person_id = person_id
-    loan_result = await loan_collection.insert_one(loan_data.dict())
+    # Create Loan
+    loan_data = {
+        "person_id": person_id,
+        "loan_amnt": data["loan_amnt"],
+        "loan_intent": data["loan_intent"],
+        "loan_status": data["loan_status"]
+    }
+    loan_result = await loan_collection.insert_one(loan_data)
     loan_id = str(loan_result.inserted_id)
 
-    # Insert credit history with person_id
-    credit_history_data.person_id = person_id
-    await credit_history_collection.insert_one(credit_history_data.dict())
-
-    # Insert loan financials with loan_id
-    loan_financials_data.loan_id = loan_id
-    await loan_financials_collection.insert_one(loan_financials_data.dict())
-
-    return {"message": "Person and associated data created successfully", "person_id": person_id, "loan_id": loan_id}
-
-# Get all data related to a person
-async def get_all_data_for_person(person_id: str):
-    person = await person_collection.find_one({"_id": ObjectId(person_id)})
-    loan = await loan_collection.find_one({"person_id": person_id})
-    credit_history = await credit_history_collection.find_one({"person_id": person_id})
-    loan_financials = await loan_financials_collection.find_one({"loan_id": loan["_id"]})
-    
-    return {
-        "person": person,
-        "loan": loan,
-        "credit_history": credit_history,
-        "loan_financials": loan_financials
+    # Create Credit History
+    credit_history_data = {
+        "person_id": person_id,
+        "credit_score": data["credit_score"],
+        "cb_person_cred_hist_length": data["cb_person_cred_hist_length"],
+        "previous_loan_defaults_on_file": data["previous_loan_defaults_on_file"]
     }
+    await credit_history_collection.insert_one(credit_history_data)
 
-# Update Person and associated data
-async def update_person_and_associated_data(person_id: str, person_data: Person, loan_data: Loan, credit_history_data: CreditHistory, loan_financials_data: LoanFinancials):
-    # Update person
-    await person_collection.update_one({"_id": ObjectId(person_id)}, {"$set": person_data.dict()})
-    
-    # Update loan
-    await loan_collection.update_one({"person_id": person_id}, {"$set": loan_data.dict()})
-    
-    # Update credit history
-    await credit_history_collection.update_one({"person_id": person_id}, {"$set": credit_history_data.dict()})
-    
-    # Update loan financials
-    await loan_financials_collection.update_one({"loan_id": loan_data.person_id}, {"$set": loan_financials_data.dict()})
-    
-    return {"message": "Person and associated data updated successfully"}
+    # Create Loan Financials
+    loan_financials_data = {
+        "loan_id": loan_id,
+        "loan_int_rate": data["loan_int_rate"],
+        "loan_percent_income": data["loan_percent_income"]
+    }
+    await loan_financials_collection.insert_one(loan_financials_data)
 
-# Delete Person and associated data
-async def delete_person_and_associated_data(person_id: str):
-    person = await person_collection.find_one({"_id": ObjectId(person_id)})
-    if person:
-        loan = await loan_collection.find_one({"person_id": person_id})
-        credit_history = await credit_history_collection.find_one({"person_id": person_id})
-        loan_financials = await loan_financials_collection.find_one({"loan_id": loan["_id"]})
-
-        await person_collection.delete_one({"_id": ObjectId(person_id)})
-        await loan_collection.delete_one({"_id": loan["_id"]})
-        await credit_history_collection.delete_one({"_id": credit_history["_id"]})
-        await loan_financials_collection.delete_one({"_id": loan_financials["_id"]})
-
-        return {"message": "Person and associated data deleted successfully"}
-    return {"message": "Person not found"}
+    return {"message": "Data saved successfully!", "person_id": person_id, "loan_id": loan_id}
