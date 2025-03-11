@@ -1,12 +1,11 @@
-# app/main.py
 from fastapi import FastAPI
-from routes.routes import router as laptop_router
+from routes.routes import router as crud_route
 
 app = FastAPI()
 
-# Include the laptop-related routes
-app.include_router(laptop_router, prefix="/api", tags=["laptop"])
+# Include the CRUD routes for all models
+app.include_router(crud_route.router, prefix="/data", tags=["Data Operations"])
 
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the Laptop Price Prediction API"}
+async def root():
+    return {"message": "Loan Management API is running!"}

@@ -1,71 +1,78 @@
-from config.db import laptop_collection
-from models.model import Laptop
+from config.db import database
+from models.person import Person
+from models.loan import Loan
+from models.credit_history import CreditHistory
+from models.loan_financials import LoanFinancials
 from bson import ObjectId
-from typing import List, Optional
 
-# Convert MongoDB ObjectId to string for easy serialization
-def laptop_helper(laptop):
+person_collection = database["persons"]
+loan_collection = database["loans"]
+credit_history_collection = database["credit_history"]
+loan_financials_collection = database["loan_financials"]
+
+# Create Person, Loan, Credit History, Loan Financials
+async def create_person_and_associated_data(person_data: Person, loan_data: Loan, credit_history_data: CreditHistory, loan_financials_data: LoanFinancials):
+    # Insert person
+    person_result = await person_collection.insert_one(person_data.dict())
+    person_id = str(person_result.inserted_id)
+
+    # Insert loan with person_id
+    loan_data.person_id = person_id
+    loan_result = await loan_collection.insert_one(loan_data.dict())
+    loan_id = str(loan_result.inserted_id)
+
+    # Insert credit history with person_id
+    credit_history_data.person_id = person_id
+    await credit_history_collection.insert_one(credit_history_data.dict())
+
+    # Insert loan financials with loan_id
+    loan_financials_data.loan_id = loan_id
+    await loan_financials_collection.insert_one(loan_financials_data.dict())
+
+    return {"message": "Person and associated data created successfully", "person_id": person_id, "loan_id": loan_id}
+
+# Get all data related to a person
+async def get_all_data_for_person(person_id: str):
+    person = await person_collection.find_one({"_id": ObjectId(person_id)})
+    loan = await loan_collection.find_one({"person_id": person_id})
+    credit_history = await credit_history_collection.find_one({"person_id": person_id})
+    loan_financials = await loan_financials_collection.find_one({"loan_id": loan["_id"]})
+    
     return {
-        "_id": str(laptop["_id"]),  # Convert ObjectId to string
-        "Brand": laptop["Brand"],  # Use matching field names (capitalized)
-        "Processor": laptop["Processor"],
-        "RAM_GB": laptop["RAM_GB"],
-        "Storage": laptop["Storage"],
-        "GPU": laptop["GPU"],
-        "Screen_Size_inch": laptop["Screen_Size_inch"],
-        "Resolution": laptop["Resolution"],
-        "Battery_Life_Hours": laptop["Battery_Life_Hours"],
-        "Weight_Kg": laptop["Weight_Kg"],
-        "Operating_System": laptop["Operating_System"],
-        "Price_Dollars": laptop["Price_Dollars"],
+        "person": person,
+        "loan": loan,
+        "credit_history": credit_history,
+        "loan_financials": loan_financials
     }
 
-# Create a new laptop
-async def create_laptop(laptop_data: Laptop) -> dict:
-    try:
-        laptop = laptop_collection.insert_one(laptop_data.dict())
-        new_laptop = laptop_collection.find_one({"_id": laptop.inserted_id})
-        return {**laptop_helper(new_laptop), "message": "Laptop successfully created!"}
-    except Exception as e:
-        return {"message": f"Failed to create laptop: {str(e)}"}
+# Update Person and associated data
+async def update_person_and_associated_data(person_id: str, person_data: Person, loan_data: Loan, credit_history_data: CreditHistory, loan_financials_data: LoanFinancials):
+    # Update person
+    await person_collection.update_one({"_id": ObjectId(person_id)}, {"$set": person_data.dict()})
+    
+    # Update loan
+    await loan_collection.update_one({"person_id": person_id}, {"$set": loan_data.dict()})
+    
+    # Update credit history
+    await credit_history_collection.update_one({"person_id": person_id}, {"$set": credit_history_data.dict()})
+    
+    # Update loan financials
+    await loan_financials_collection.update_one({"loan_id": loan_data.person_id}, {"$set": loan_financials_data.dict()})
+    
+    return {"message": "Person and associated data updated successfully"}
 
-# Read all laptops
-async def get_laptops() -> dict:
-    try:
-        laptops = laptop_collection.find()
-        laptop_list = [laptop_helper(laptop) for laptop in laptops]
-        return {"laptops": laptop_list, "message": "All laptops fetched successfully."}
-    except Exception as e:
-        return {"message": f"Failed to fetch laptops: {str(e)}"}
+# Delete Person and associated data
+async def delete_person_and_associated_data(person_id: str):
+    person = await person_collection.find_one({"_id": ObjectId(person_id)})
+    if person:
+        loan = await loan_collection.find_one({"person_id": person_id})
+        credit_history = await credit_history_collection.find_one({"person_id": person_id})
+        loan_financials = await loan_financials_collection.find_one({"loan_id": loan["_id"]})
 
-# Read a single laptop by ID
-async def get_laptop_by_id(laptop_id: str) -> dict:
-    try:
-        laptop = laptop_collection.find_one({"_id": ObjectId(laptop_id)})
-        if laptop:
-            return {**laptop_helper(laptop), "message": f"Laptop with ID {laptop_id} fetched successfully."}
-        return {"message": f"Laptop with ID {laptop_id} not found."}
-    except Exception as e:
-        return {"message": f"Failed to fetch laptop by ID {laptop_id}: {str(e)}"}
+        await person_collection.delete_one({"_id": ObjectId(person_id)})
+        await loan_collection.delete_one({"_id": loan["_id"]})
+        await credit_history_collection.delete_one({"_id": credit_history["_id"]})
+        await loan_financials_collection.delete_one({"_id": loan_financials["_id"]})
 
-# Update a laptop by ID
-async def update_laptop(laptop_id: str, laptop_data: Laptop) -> dict:
-    try:
-        result = laptop_collection.update_one({"_id": ObjectId(laptop_id)}, {"$set": laptop_data.dict()})
-        if result.modified_count > 0:
-            updated_laptop = laptop_collection.find_one({"_id": ObjectId(laptop_id)})
-            return {**laptop_helper(updated_laptop), "message": "Laptop updated successfully!"}
-        return {"message": f"Laptop with ID {laptop_id} not found or no changes made."}
-    except Exception as e:
-        return {"message": f"Failed to update laptop by ID {laptop_id}: {str(e)}"}
-
-# Delete a laptop by ID
-async def delete_laptop(laptop_id: str) -> dict:
-    try:
-        laptop = laptop_collection.find_one({"_id": ObjectId(laptop_id)})
-        if laptop:
-            laptop_collection.delete_one({"_id": ObjectId(laptop_id)})
-            return {**laptop_helper(laptop), "message": "Laptop deleted successfully."}
-        return {"message": f"Laptop with ID {laptop_id} not found."}
-    except Exception as e:
-        return {"message": f"Failed to delete laptop by ID {laptop_id}: {str(e)}"}
+        return {"message": "Person and associated data deleted successfully"}
+    return {"message": "Person not found"}

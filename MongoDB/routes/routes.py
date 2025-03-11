@@ -1,42 +1,25 @@
 from fastapi import APIRouter
-from controllers.controller import create_laptop, get_laptops, get_laptop_by_id, update_laptop, delete_laptop
-from models.model import Laptop
-from typing import List
-from fastapi.responses import JSONResponse
-from controllers.laptop_controller import predict_price
-from models.prediction import PredictionResponse
+from controllers.controller import create_person_and_associated_data, get_all_data_for_person, update_person_and_associated_data, delete_person_and_associated_data
+from models.person import Person
+from models.loan import Loan
+from models.credit_history import CreditHistory
+from models.loan_financials import LoanFinancials
 
 router = APIRouter()
 
-@router.post("/predict_price", response_model=PredictionResponse)
-def predict_laptop_price(laptop: Laptop):
-    return predict_price(laptop)
+# CRUD operations for all models
+@router.post("/create")
+async def create_data(person: Person, loan: Loan, credit_history: CreditHistory, loan_financials: LoanFinancials):
+    return await crud_controller.create_person_and_associated_data(person, loan, credit_history, loan_financials)
 
+@router.get("/get/{person_id}")
+async def get_data(person_id: str):
+    return await crud_controller.get_all_data_for_person(person_id)
 
-# Endpoint to create a new laptop
-@router.post("/laptops/", response_model=Laptop)
-async def add_laptop(laptop: Laptop):
-    return await create_laptop(laptop)
+@router.put("/update/{person_id}")
+async def update_data(person_id: str, person: Person, loan: Loan, credit_history: CreditHistory, loan_financials: LoanFinancials):
+    return await crud_controller.update_person_and_associated_data(person_id, person, loan, credit_history, loan_financials)
 
-# Endpoint to get all laptops
-@router.get("/laptops/", response_model=List[Laptop])
-async def get_all_laptops():
-    # Await the asynchronous function
-    laptops = await get_laptops()  # Await the coroutine
-    return laptops
-
-# Endpoint to get a single laptop by ID
-@router.get("/laptops/{laptop_id}", response_model=Laptop)
-async def get_laptop(laptop_id: str):
-    return await get_laptop_by_id(laptop_id)
-
-# Endpoint to update a laptop by ID
-@router.put("/laptops/{laptop_id}", response_model=Laptop)
-async def update_existing_laptop(laptop_id: str, laptop: Laptop):
-    return await update_laptop(laptop_id, laptop)
-
-# Endpoint to delete a laptop by ID
-@router.delete("/laptops/{laptop_id}", response_model=Laptop)
-async def delete_existing_laptop(laptop_id: str):
-    return await delete_laptop(laptop_id)
-
+@router.delete("/delete/{person_id}")
+async def delete_data(person_id: str):
+    return await crud_controller.delete_person_and_associated_data(person_id)
