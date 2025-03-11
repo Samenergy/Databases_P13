@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from controllers.controller import create_all_models, get_person_by_id, update_person_data, update_loan_data, delete_person_data
+from controllers.controller import create_all_models, get_person, update_person, delete_person
 from pydantic import BaseModel
 from typing import Optional
 
@@ -21,30 +21,47 @@ class LoanRequest(BaseModel):
     previous_loan_defaults_on_file: str
     loan_status: int
 
-# Create all models
-@router.post("/create-all")
-async def create_all(data: LoanRequest):
+class PersonUpdateRequest(BaseModel):
+    person_age: Optional[float] = None
+    person_gender: Optional[str] = None
+    person_education: Optional[str] = None
+    person_income: Optional[float] = None
+    person_emp_exp: Optional[int] = None
+    person_home_ownership: Optional[str] = None
+    loan_amnt: float
+    loan_intent: str
+    loan_int_rate: float
+    loan_percent_income: float
+    cb_person_cred_hist_length: float
+    credit_score: int
+    previous_loan_defaults_on_file: str
+    loan_status: int
+
+
+# CRUD Operations
+@router.post("/crud/create-all")
+async def crud_create_all(data: LoanRequest):
     return await create_all_models(data.dict())
 
-# Read Operation
-@router.get("/person/{person_id}")
-async def read_person(person_id: str):
-    person_data = await get_person_by_id(person_id)
-    if not person_data:
+@router.get("/crud/person/{person_id}")
+async def crud_get_person(person_id: str):
+    result = await get_person(person_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Person not found")
-    return person_data
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
-# Update Person Operation
-@router.put("/person/{person_id}")
-async def update_person(person_id: str, data: LoanRequest):
-    return await update_person_data(person_id, data.dict())
+@router.put("/crud/person/{person_id}")
+async def crud_update_person(person_id: str, data: PersonUpdateRequest):
+    result = await update_person(person_id, data.dict(exclude_unset=True))
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
-# Update Loan Operation
-@router.put("/loan/{loan_id}")
-async def update_loan(loan_id: str, data: LoanRequest):
-    return await update_loan_data(loan_id, data.dict())
-
-# Delete Person Operation
-@router.delete("/person/{person_id}")
-async def delete_person(person_id: str):
-    return await delete_person_data(person_id)
+@router.delete("/crud/person/{person_id}")
+async def crud_delete_person(person_id: str):
+    result = await delete_person(person_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
