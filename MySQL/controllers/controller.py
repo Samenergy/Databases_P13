@@ -98,12 +98,72 @@ def get_person_with_details(db: Session, person_id: int):
         }
     }
 
+def update_person(db: Session, person_id: int, person_data: PersonCreate):
+    """Updates an existing person's details along with their related loan, financials, and credit history."""
+    
+    person = db.query(Person).filter(Person.id == person_id).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="Person not found")
+
+    # Update Person details
+    person.age = person_data.person_age
+    person.gender = person_data.person_gender
+    person.education = person_data.person_education
+    person.income = person_data.person_income
+    person.emp_exp = person_data.person_emp_exp
+    person.home_ownership = person_data.person_home_ownership
+    db.commit()
+    db.refresh(person)
+
+    # Update Loan details
+    loan = db.query(Loan).filter(Loan.person_id == person_id).first()
+    if loan:
+        loan.loan_amount = person_data.loan_amnt
+        loan.loan_intent = person_data.loan_intent
+        loan.loan_status = person_data.loan_status
+        db.commit()
+        db.refresh(loan)
+
+        # Update Loan Financials
+        loan_financials = db.query(LoanFinancials).filter(LoanFinancials.loan_id == loan.id).first()
+        if loan_financials:
+            loan_financials.interest_rate = person_data.loan_int_rate
+            loan_financials.percent_income = person_data.loan_percent_income
+            db.commit()
+            db.refresh(loan_financials)
+
+    # Update Credit History
+    credit_history = db.query(CreditHistory).filter(CreditHistory.person_id == person_id).first()
+    if credit_history:
+        credit_history.credit_score = person_data.credit_score
+        credit_history.cred_hist_length = person_data.cb_person_cred_hist_length
+        credit_history.previous_defaults = person_data.previous_loan_defaults_on_file
+        db.commit()
+        db.refresh(credit_history)
+
+    return {"message": f"Person with ID {person_id} updated successfully"}
+
+
+
 def delete_person(db: Session, person_id: int):
     """Deletes a person and all related records."""
     person = db.query(Person).filter(Person.id == person_id).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
 
+    # Delete associated loan financials first
+    loans = db.query(Loan).filter(Loan.person_id == person_id).all()
+    for loan in loans:
+        db.query(LoanFinancials).filter(LoanFinancials.loan_id == loan.id).delete()
+
+    # Delete loans
+    db.query(Loan).filter(Loan.person_id == person_id).delete()
+
+    # Delete credit history
+    db.query(CreditHistory).filter(CreditHistory.person_id == person_id).delete()
+
+    # Finally, delete the person
     db.delete(person)
     db.commit()
+    
     return {"message": f"Person with ID {person_id} and related records deleted successfully"}
