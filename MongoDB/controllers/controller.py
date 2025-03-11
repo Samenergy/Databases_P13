@@ -1,8 +1,4 @@
 from config.db import database
-from models.person import Person
-from models.loan import Loan
-from models.credit_history import CreditHistory
-from models.loan_financials import LoanFinancials
 from bson import ObjectId
 
 person_collection = database["persons"]
@@ -51,3 +47,59 @@ async def create_all_models(data: dict):
     await loan_financials_collection.insert_one(loan_financials_data)
 
     return {"message": "Data saved successfully!", "person_id": person_id, "loan_id": loan_id}
+
+
+# Read Operation
+async def get_person_by_id(person_id: str):
+    person = await person_collection.find_one({"_id": ObjectId(person_id)})
+    loan = await loan_collection.find_one({"person_id": person_id})
+    credit_history = await credit_history_collection.find_one({"person_id": person_id})
+    loan_financials = await loan_financials_collection.find_one({"loan_id": loan["loan_id"]})
+    
+    return {
+        "person": person,
+        "loan": loan,
+        "credit_history": credit_history,
+        "loan_financials": loan_financials
+    }
+
+# Update Operation
+async def update_person_data(person_id: str, data: dict):
+    updated_person = await person_collection.update_one(
+        {"_id": ObjectId(person_id)},
+        {"$set": data}
+    )
+    if updated_person.modified_count > 0:
+        return {"message": "Person data updated successfully!"}
+    return {"message": "No changes made!"}
+
+async def update_loan_data(loan_id: str, data: dict):
+    updated_loan = await loan_collection.update_one(
+        {"_id": ObjectId(loan_id)},
+        {"$set": data}
+    )
+    if updated_loan.modified_count > 0:
+        return {"message": "Loan data updated successfully!"}
+    return {"message": "No changes made!"}
+
+# Delete Operation
+async def delete_person_data(person_id: str):
+    # Find the loan related to the person
+    loan = await loan_collection.find_one({"person_id": person_id})
+    
+    if loan:
+        loan_id = loan["_id"]  # Use the MongoDB _id as the loan_id
+        
+        # Delete the associated data from loan_financials collection using the loan_id
+        await loan_financials_collection.delete_one({"loan_id": loan_id})
+
+        # Delete the loan from the loan_collection
+        await loan_collection.delete_one({"person_id": person_id})
+
+    # Delete associated credit history
+    await credit_history_collection.delete_many({"person_id": person_id})
+
+    # Delete the person from the person_collection
+    await person_collection.delete_one({"_id": ObjectId(person_id)})
+
+    return {"message": "Person and related data deleted successfully!"}
