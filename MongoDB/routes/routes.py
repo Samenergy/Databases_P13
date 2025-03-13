@@ -3,7 +3,7 @@ from controllers.controller import create_all_models, get_person, update_person,
 from controllers.predict_controller import predict_loan
 from pydantic import BaseModel
 from typing import Optional
-
+from models.predict import LoanApplication
 router = APIRouter()
 
 class LoanRequest(BaseModel):
