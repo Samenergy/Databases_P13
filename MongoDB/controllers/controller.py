@@ -5,9 +5,9 @@ from pymongo import MongoClient
 import pickle
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from sklearn.preprocessing import StandardScaler, LabelEncoder
 from config.db import collection
 from models.predict import LoanApplication
+from pydantic import BaseModel
 
 person_collection = database["persons"]
 loan_collection = database["loans"]
@@ -157,6 +157,7 @@ async def delete_person(person_id: str):
     except Exception as e:
         return {"error": str(e)}
 
+
 # Load the model, scaler, and label encoder
 model = load_model('/Users/samenergy/Documents/Projects/Databases_P13/Model/loan_approval_model.h5')
 
@@ -165,6 +166,22 @@ with open('/Users/samenergy/Documents/Projects/Databases_P13/Model/scaler.pkl', 
 
 with open('/Users/samenergy/Documents/Projects/Databases_P13/Model/label_encoder.pkl', 'rb') as f:
     label_encoder = pickle.load(f)
+
+# Define Pydantic model for input validation
+class LoanApplication(BaseModel):
+    person_age: int
+    person_gender: str
+    person_education: str
+    person_income: float
+    person_emp_exp: float
+    person_home_ownership: str
+    loan_amnt: float
+    loan_intent: str
+    loan_int_rate: float
+    loan_percent_income: float
+    cb_person_cred_hist_length: int
+    credit_score: float
+    previous_loan_defaults_on_file: int
 
 def predict_loan_status(loan: LoanApplication):
     # Convert input data into a list
@@ -206,6 +223,6 @@ def predict_loan_status(loan: LoanApplication):
     # Store in MongoDB
     loan_data = loan.dict()
     loan_data["loan_status"] = result
-    loan_collection.insert_one(loan_data)
+    collection.insert_one(loan_data)  # Insert into MongoDB collection
 
     return {"loan_status": result}

@@ -43,12 +43,18 @@ def create_person_with_details(db: Session, person_data: PersonCreate):
     db.commit()
     db.refresh(new_loan_financials)
 
+    # Validate and process previous_defaults value
+    previous_defaults = person_data.previous_loan_defaults_on_file
+    if previous_defaults not in ["Yes", "No"]:
+        # Default to "No" if an invalid value is provided
+        previous_defaults = "No"
+
     # Create Credit History instance
     new_credit_history = CreditHistory(
         person_id=new_person.id,
         credit_score=person_data.credit_score,
         cred_hist_length=person_data.cb_person_cred_hist_length,
-        previous_defaults=person_data.previous_loan_defaults_on_file,
+        previous_defaults=previous_defaults,
     )
     db.add(new_credit_history)
     db.commit()
@@ -137,13 +143,18 @@ def update_person(db: Session, person_id: int, person_data: PersonCreate):
     if credit_history:
         credit_history.credit_score = person_data.credit_score
         credit_history.cred_hist_length = person_data.cb_person_cred_hist_length
-        credit_history.previous_defaults = person_data.previous_loan_defaults_on_file
+        
+        # Validate and process previous_defaults value
+        previous_defaults = person_data.previous_loan_defaults_on_file
+        if previous_defaults not in ["Yes", "No"]:
+            # Default to "No" if an invalid value is provided
+            previous_defaults = "No"
+            
+        credit_history.previous_defaults = previous_defaults
         db.commit()
         db.refresh(credit_history)
 
     return {"message": f"Person with ID {person_id} updated successfully"}
-
-
 
 def delete_person(db: Session, person_id: int):
     """Deletes a person and all related records."""
